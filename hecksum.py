@@ -1,13 +1,14 @@
-from collections.abc import Callable
-from contextlib import suppress
 from enum import Enum
 import hashlib
 import os
 import re
-from typing import ClassVar, Optional
+from typing import cast, ClassVar, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, constr, HttpUrl
 import requests
+
+DEBUG = bool(os.environ.get('DEBUG', False))
+IGNORED_EXCEPTIONS = () if DEBUG else (Exception,)
 
 
 def get_raised(url: str) -> requests.Response:
@@ -16,43 +17,42 @@ def get_raised(url: str) -> requests.Response:
     return r
 
 
-class Reference(BaseModel):
-    hash_function: Optional[str] = None
-    checksum_url: Optional[str] = None
-    download_url: Optional[str] = None
-    checksum: Optional[str] = None
+class BaseReference(BaseModel):
+    algorithm: str
+    checksum_url: Optional[HttpUrl] = None
+    download_url: Optional[HttpUrl] = None
+    checksum: Optional[constr(strip_whitespace=True)] = None
 
 
-class ReferenceFactory(BaseModel):
-    # set to url
-    hasher: Callable
-    checksum_url: Optional[str] = None
-    download_url: Optional[str] = None
-    checksum: Optional[str] = None
+class Reference(BaseReference):
+    class Config:
+        validate_assignment = True
 
+    def populated(self) -> bool:
+        return all(self.dict().values())
+
+
+class ReferenceFactory(BaseReference):
     class Config:
         allow_mutation = False
 
     def make(self) -> Reference:
-        ref = Reference(
-            checksum_url=self.checksum_url,
-            download_url=self.download_url,
-            checksum=self.checksum,
-            hash_function=self.hasher.__qualname__,
-        )
-        with suppress(Exception):
+        ref = Reference(**self.dict())
+        try:
             self._populate(ref)
+        except IGNORED_EXCEPTIONS:
+            pass
         return ref
 
-    def _populate(self, ref) -> None:
+    def _populate(self, ref: Reference) -> None:
         ref.checksum = get_raised(ref.checksum_url).text
 
 
 class CodecovBashUploader(ReferenceFactory):
-    hasher = hashlib.sha512
-    download_url = 'https://codecov.io/bash'
+    algorithm = 'sha512'
+    download_url: HttpUrl = 'https://codecov.io/bash'
 
-    def _populate(self, ref) -> None:
+    def _populate(self, ref: Reference) -> None:
         script = get_raised(ref.download_url).text
         version = re.search(r'VERSION="(.*)"', script).group(1)
         ref.checksum_url = f'https://raw.githubusercontent.com/codecov/codecov-bash/{version}/SHA512SUM'
@@ -61,25 +61,25 @@ class CodecovBashUploader(ReferenceFactory):
 
 
 class Transmission(ReferenceFactory):
-    hasher = hashlib.sha256
-    checksum_url = 'https://transmissionbt.com/includes/js/constants.js'
+    algorithm = 'sha256'
+    checksum_url: HttpUrl = 'https://transmissionbt.com/includes/js/constants.js'
     file_name_template: str
     sha_key: str
     version_key: str
 
-    def _populate(self, ref) -> None:
+    def _populate(self, ref: Reference) -> None:
         constants = get_raised(ref.checksum_url).text
-        ref.checksum = re.search(f'{ref.sha_key}: "(.*)"', constants).group(1)
-        version = re.search(f'{ref.version_key}: "(.*)"', constants).group(1)
-        file_name = ref.file_name_template.format(version=version)
+        ref.checksum = re.search(f'{self.sha_key}: "(.*)"', constants).group(1)
+        version = re.search(f'{self.version_key}: "(.*)"', constants).group(1)
+        file_name = self.file_name_template.format(version=version)
         ref.download_url = f'https://github.com/transmission/transmission-releases/raw/master/{file_name}'
 
 
 codecov_bash_uploader = CodecovBashUploader()
 test_failure = ReferenceFactory(
-    download_url='https://hecksum.com/failure.txt',
-    checksum_url='https://hecksum.com/failureSHA512.txt',
-    hasher=hashlib.sha512,
+    download_url=cast(HttpUrl, 'https://hecksum.com/failure.txt'),
+    checksum_url=cast(HttpUrl, 'https://hecksum.com/failureSHA512.txt'),
+    algorithm='sha512'
 )
 transmission_mac = Transmission(
     file_name_template='Transmission-{version}.dmg',
@@ -103,6 +103,14 @@ transmission_linux = Transmission(
 )
 
 
+def create_download_checksum(url: str, algorithm: str) -> str:
+    h = hashlib.new(algorithm)
+    r = get_raised(url)
+    h.update(r.content)
+    checksum = h.hexdigest()
+    return checksum
+
+
 class Project(BaseModel):
     name: str
     airtable_id: str
@@ -115,8 +123,24 @@ class Project(BaseModel):
         'recVSRZVqVDt2SCom': transmission_linux,
     }
 
-    def reference(self) -> Reference:
-        return self.REFERENCE_FACTORIES[self.airtable_id].make()
+    def check(self) -> 'Check':
+        reference_factory = self.REFERENCE_FACTORIES[self.airtable_id]
+        ref = reference_factory.make()
+        try:
+            if not ref.populated():
+                raise Exception(f'Reference not populated. {ref}')
+            download_checksum = create_download_checksum(ref.download_url, ref.algorithm)
+        except IGNORED_EXCEPTIONS:
+            status = Status.error
+        else:
+            status = Status.passing if ref.checksum == download_checksum else Status.failing
+        return Check(
+            project=self,
+            status=status,
+            checksum=ref.checksum,
+            checksum_url=ref.checksum_url,
+            download_url=ref.download_url,
+        )
 
 
 class Status(str, Enum):
@@ -129,35 +153,13 @@ class Check(BaseModel):
     project: Project
     status: Status
     checksum: Optional[str]
-    checksum_url: Optional[str]
-    download_url: Optional[str]
+    checksum_url: Optional[HttpUrl]
+    download_url: Optional[HttpUrl]
 
-    @classmethod
-    def create(cls, project: Project):
-        ref = project.reference()
-        # noinspection PyBroadException
-        try:
-            download_checksum = cls.create_download_checksum(ref.download_url, ref.hash_func)
-        except Exception:
-            status = Status.error
-        else:
-            status = Status.passing if ref.checksum == download_checksum else Status.failing
-        return cls(
-            project=project,
-            status=status,
-            checksum=ref.checksum,
-            checksum_url=ref.checksum_url,
-            download_url=ref.download_url,
-        )
+    class Config:
+        use_enum_values = True
 
-    @staticmethod
-    def create_download_checksum(url: str, hasher: Callable) -> str:
-        r = requests.get(url)
-        r.raise_for_status()
-        checksum = hasher(r.content).hexdigest()
-        return checksum
-
-    def post(self) -> None:
+    def post(self) -> requests.Response:
         headers = {'Authorization': f'Bearer {os.environ["AIRTABLE_API_KEY"]}'}
         payload = {
             'fields': {
@@ -169,11 +171,22 @@ class Check(BaseModel):
             },
             'typecast': True
         }
-        requests.post('https://api.airtable.com/v0/appPt1p6IWk5Cjv2E/Checks', json=payload, headers=headers)
+        return requests.post('https://api.airtable.com/v0/appPt1p6IWk5Cjv2E/Checks', json=payload, headers=headers)
 
 
 def main():
-    pass
+    projects = [
+        Project(airtable_id='recU4m6YnYdQ4U76q', name='Test Failure'),
+        Project(airtable_id='rec1stqERwHeVoyTr', name='Codecov Bash Uploader'),
+        Project(airtable_id='recPGEEzOeJ2gNh7u', name='Transmission Mac OS X'),
+        Project(airtable_id='rec6xk5CUPcjsqIyD', name='Transmission Windows x86'),
+        Project(airtable_id='recZOMQpGtd524lsj', name='Transmission Windows x64'),
+        Project(airtable_id='recVSRZVqVDt2SCom', name='Transmission Linux'),
+    ]
+    for project in projects:
+        check = project.check()
+        print(check)
+        check.post()
 
 
 if __name__ == '__main__':
