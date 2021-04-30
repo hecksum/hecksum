@@ -86,7 +86,8 @@ class Doppler(ReferenceFactory):
     architecture: str
 
     # TODO: Doppler releases in multiple formats per architecture. This doesn't handle that and
-    # only retrieves the first file for a particular architecture.
+    # only retrieves the first file for a particular architecture. We should find a way to support
+    # all the releases in whichever format.
     def _populate(self, ref: Reference) -> None:
         latest_release_url = requests.get('https://github.com/DopplerHQ/cli/releases/latest').url
         version = re.search(r'\d+\.\d+\.\d+', latest_release_url)[0]
