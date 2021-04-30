@@ -75,6 +75,29 @@ class Transmission(ReferenceFactory):
         file_name = self.file_name_template.format(version=version)
         ref.download_url = f'https://github.com/transmission/transmission-releases/raw/master/{file_name}'
 
+'''
+   Doppler CLI releases on 23 architectures as of 04/29/2021, this reference takes in an architecture and attempts
+   to verify the doppler CLI release for that architecture. Doppler also releases each architecture in multiple formats.
+   This reference does not handle the multiple formats, instead it picks the first packaging it finds and uses that
+   as the release to download and verify.
+'''
+class Doppler(ReferenceFactory):
+    algorithm = 'sha256'
+    architecture: str
+
+    # TODO: Doppler releases in multiple formats per architecture. This doesn't handle that and
+    # only retrieves the first file for a particular architecture.
+    def _populate(self, ref: Reference) -> None:
+        latest_release_url = requests.get('https://github.com/DopplerHQ/cli/releases/latest').url
+        version = re.search(r'\d+\.\d+\.\d+', latest_release_url)[0]
+        ref.checksum_url = f'https://github.com/DopplerHQ/cli/releases/download/{version}/checksums.txt'
+        checksum = get_raised(ref.checksum_url).text
+        regex_string = fr'([\w\d]{{64}}) {{2}}(doppler_{version}_{self.architecture}\.[\w\.]+)'
+        release_chucksum = re.search(regex_string, checksum)
+        ref.checksum = release_chucksum.group(1)
+        release_file_name = release_chucksum.group(2)
+        ref.download_url = f'https://github.com/DopplerHQ/cli/releases/download/{version}/{release_file_name}'
+
 
 codecov_bash_uploader = CodecovBashUploader()
 test_failure = ReferenceFactory(
@@ -101,4 +124,8 @@ transmission_linux = Transmission(
     file_name_template='transmission-{version}.tar.xz',
     sha_key='sha256_tar',
     version_key='current_version_tar',
+)
+
+doppler_windows_armv7 = Doppler(
+    architecture='linux_arm64'
 )
