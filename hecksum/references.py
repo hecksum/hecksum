@@ -100,32 +100,134 @@ class Doppler(ReferenceFactory):
 
 
 codecov_bash_uploader = CodecovBashUploader()
+
 test_failure = ReferenceFactory(
     download_url=cast(HttpUrl, 'https://hecksum.com/failure.txt'),
     checksum_url=cast(HttpUrl, 'https://hecksum.com/failureSHA512.txt'),
     algorithm='sha512'
 )
+
+############
+# Transmission Reference Definitions
+############
+
 transmission_mac = Transmission(
     file_name_template='Transmission-{version}.dmg',
     sha_key='sha256_dmg',
     version_key='current_version_dmg'
 )
+
 transmission_win_32 = Transmission(
     file_name_template='transmission-{version}-x86.msi',
     sha_key='sha256_msi32',
     version_key='current_version_msi',
 )
+
 transmission_win_64 = Transmission(
     file_name_template='transmission-{version}-x64.msi',
     sha_key='sha256_msi64',
     version_key='current_version_msi',
 )
+
 transmission_linux = Transmission(
     file_name_template='transmission-{version}.tar.xz',
     sha_key='sha256_tar',
     version_key='current_version_tar',
 )
 
-doppler_windows_armv7 = Doppler(
+
+############
+# Doppler Reference Definitions
+############
+
+doppler_linux_amd64 = Doppler(
+    architecture='linux_amd64'
+)
+
+doppler_linux_i386 = Doppler(
+    architecture='linux_i386'
+)
+
+doppler_linux_armv7 = Doppler(
+    architecture='linux_armv7'
+)
+
+doppler_openbsd_arm64 = Doppler(
+    architecture='openbsd_arm64'
+)
+
+doppler_linux_armv6 = Doppler(
+    architecture='linux_armv6'
+)
+
+doppler_openbsd_armv6 = Doppler(
+    architecture='openbsd_armv6'
+)
+
+doppler_macOS_amd64 = Doppler(
+    architecture='macOS_amd64'
+)
+
+doppler_macOS_arm64 = Doppler(
+    architecture='macOS_arm64'
+)
+
+doppler_freebsd_armv7 = Doppler(
+    architecture='freebsd_armv7'
+)
+
+doppler_openbsd_amd64 = Doppler(
+    architecture='openbsd_amd64'
+)
+
+doppler_openbsd_i386 = Doppler(
+    architecture='openbsd_i386'
+)
+
+doppler_linux_arm64 = Doppler(
     architecture='linux_arm64'
+)
+
+doppler_openbsd_armv7 = Doppler(
+    architecture='openbsd_armv7'
+)
+
+doppler_freebsd_amd64 = Doppler(
+    architecture='freebsd_amd64'
+)
+
+doppler_netbsd_amd64 = Doppler(
+    architecture='netbsd_amd64'
+)
+
+doppler_windows_amd64 = Doppler(
+    architecture='windows_amd64'
+)
+
+doppler_netbsd_armv7 = Doppler(
+    architecture='netbsd_armv7'
+)
+
+doppler_freebsd_arm64 = Doppler(
+    architecture='freebsd_arm64'
+)
+
+doppler_netbsd_i386 = Doppler(
+    architecture='netbsd_i386'
+)
+
+doppler_netbsd_armv6 = Doppler(
+    architecture='netbsd_armv6'
+)
+
+doppler_freebsd_armv6 = Doppler(
+    architecture='freebsd_armv6'
+)
+
+doppler_windows_armv7 = Doppler(
+    architecture='windows_armv7'
+)
+
+doppler_windows_armv6 = Doppler(
+    architecture='windows_armv6'
 )
