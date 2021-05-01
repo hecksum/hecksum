@@ -6,11 +6,11 @@ from pprint import pprint
 import sys
 from time import time
 
-from hecksum import references
+from hecksum import reference_factories
 
 factory_name = sys.argv[1]
 print(factory_name)
-factory: references.ReferenceFactory = getattr(references, factory_name)
+factory: reference_factories.ReferenceFactory = getattr(reference_factories, factory_name)
 ref = factory.make()
 pprint(ref.dict())
 start = time()

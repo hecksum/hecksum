@@ -1,5 +1,5 @@
 from delete_old import delete_old
-from hecksum.db_models import Project
+from hecksum.classes import Project
 
 delete_old()
 
