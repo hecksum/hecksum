@@ -1,4 +1,7 @@
+from delete_old import delete_old
 from hecksum.db_models import Project
+
+delete_old()
 
 projects = [
     Project(airtable_id='rec1stqERwHeVoyTr', name='Codecov Bash Uploader'),
