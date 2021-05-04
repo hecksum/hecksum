@@ -5,6 +5,8 @@ from hecksum.classes import Reference, Version
 from hecksum.functions import get_raised
 from settings import IGNORED_EXCEPTIONS
 
+from hecksum.releases.doppler import doppler_releases
+
 reference_factories = []
 
 
@@ -64,53 +66,37 @@ def transmission():
         )
         yield reference
 
-#
-# '''
-#    Doppler CLI releases on 23 architectures as of 04/29/2021, this reference takes in an architecture and attempts
-#    to verify the doppler CLI release for that architecture. Doppler also releases each architecture in multiple formats.
-#    This reference does not handle the multiple formats, instead it picks the first packaging it finds and uses that
-#    as the release to download and verify.
-# '''
-#
-#
-# class Doppler(ReferenceFactory):
-#     algorithm = 'sha256'
-#     architecture: str
-#
-#     # TODO: Doppler releases in multiple formats per architecture. This doesn't handle that and
-#     # only retrieves the first file for a particular architecture. We should find a way to support
-#     # all the releases in whichever format.
-#     def _populate(self, ref: Reference) -> None:
-#         latest_release_url = requests.get('https://github.com/DopplerHQ/cli/releases/latest').url
-#         version = re.search(r'\d+\.\d+\.\d+', latest_release_url)[0]
-#         ref.checksum_url = f'https://github.com/DopplerHQ/cli/releases/download/{version}/checksums.txt'
-#         checksum = get_raised(ref.checksum_url).text
-#         regex_string = fr'([\w\d]{{64}}) {{2}}(doppler_{version}_{self.architecture}\.[\w\.]+)'
-#         release_chucksum = re.search(regex_string, checksum)
-#         ref.checksum = release_chucksum.group(1)
-#         release_file_name = release_chucksum.group(2)
-#         ref.download_url = f'https://github.com/DopplerHQ/cli/releases/download/{version}/{release_file_name}'
-#
-# ['linux_amd64',
-# 'linux_i386',
-# 'linux_armv7',
-# 'openbsd_arm64',
-# 'linux_armv6',
-# 'openbsd_armv6',
-# 'macOS_amd64',
-# 'macOS_arm64',
-# 'freebsd_armv7',
-# 'openbsd_amd64',
-# 'openbsd_i386',
-# 'linux_arm64',
-# 'openbsd_armv7',
-# 'freebsd_amd64',
-# 'netbsd_amd64',
-# 'windows_amd64',
-# 'netbsd_armv7',
-# 'freebsd_arm64',
-# 'netbsd_i386',
-# 'netbsd_armv6',
-# 'freebsd_armv6',
-# 'windows_armv7',
-# 'windows_armv6',]
+
+'''
+    Doppler CLI releases on 23 architectures as of 04/29/2021, this reference takes in an architecture and attempts
+    to verify the doppler CLI release for that architecture. Doppler also releases each architecture in multiple formats.
+    This reference does not handle the multiple formats, instead it picks the first packaging it finds and uses that
+    as the release to download and verify.
+    Doppler CLI github: https://github.com/DopplerHQ/cli
+'''
+@reference_factory
+def doppler():
+    for release in doppler_releases:
+        # Start by retrieving the latest release of doppler and the published checksums from that release
+        latest_release_url = get_raised('https://github.com/DopplerHQ/cli/releases/latest').url
+        latest_version = re.search(r'\d+\.\d+\.\d+', latest_release_url)[0]
+        checksum_url = f'https://github.com/DopplerHQ/cli/releases/download/{latest_version}/checksums.txt'
+        published_checksum = get_raised(checksum_url).text
+
+        # Extract the checksum from the published_checksum we downloaded
+        regex_string = fr'([\w\d]{{64}}) {{2}}(doppler_{latest_version}_{release.architecture}\.[\w\.]+)'
+        release_chucksum = re.search(regex_string, published_checksum)
+        release_file_name = release_chucksum.group(2)
+
+        checksum = release_chucksum.group(1)
+        download_url = f'https://github.com/DopplerHQ/cli/releases/download/{latest_version}/{release_file_name}'
+
+        reference = Reference(
+            project_slug='doppler',
+            version=Version(number=latest_version, os=release.os),
+            algorith='sha256',
+            download_url = download_url,
+            checksum=checksum
+        )
+        yield reference
+
