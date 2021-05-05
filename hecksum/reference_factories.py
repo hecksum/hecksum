@@ -6,6 +6,7 @@ from hecksum.functions import get_raised
 from settings import IGNORED_EXCEPTIONS
 
 from hecksum.releases.doppler import doppler_releases
+from hecksum.releases.transmission import transmission_releases
 
 reference_factories = []
 
@@ -44,13 +45,7 @@ def codecov_bash_uploader() -> Generator[Reference, None, None]:
 
 @reference_factory
 def transmission():
-    versions = [
-        ('Transmission-{version}.dmg', 'sha256_dmg', 'current_version_dmg', 'MacOS', None),
-        ('transmission-{version}-x86.msi', 'sha256_msi32', 'current_version_msi', 'Windows', 'x86'),
-        ('transmission-{version}-x64.msi', 'sha256_msi64', 'current_version_msi', 'Windows', 'x64'),
-        ('transmission-{version}.tar.xz', 'sha256_tar', 'current_version_tar', 'Linux', None)
-    ]
-    for file_name_template, sha_key, version_key, os, platform in versions:
+    for file_name_template, sha_key, version_key, os, platform in transmission_releases:
         constants = get_raised('https://transmissionbt.com/includes/js/constants.js').text
         checksum = re.search(f'{sha_key}: "(.*)"', constants).group(1)
         version_number = re.search(f'{version_key}: "(.*)"', constants).group(1)
