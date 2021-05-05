@@ -71,7 +71,7 @@ def transmission():
 '''
 @reference_factory
 def doppler():
-    for release in doppler_releases:
+    for os, architecture in doppler_releases:
         # Start by retrieving the latest release of doppler and the published checksums from that release
         latest_release_url = get_raised('https://github.com/DopplerHQ/cli/releases/latest').url
         latest_version = re.search(r'\d+\.\d+\.\d+', latest_release_url)[0]
@@ -79,7 +79,7 @@ def doppler():
         published_checksum = get_raised(checksum_url).text
 
         # Extract the checksum from the published_checksum we downloaded
-        regex_string = fr'([\w\d]{{64}}) {{2}}(doppler_{latest_version}_{release.architecture}\.[\w\.]+)'
+        regex_string = fr'([\w\d]{{64}}) {{2}}(doppler_{latest_version}_{architecture}\.[\w\.]+)'
         release_chucksum = re.search(regex_string, published_checksum)
         release_file_name = release_chucksum.group(2)
 
@@ -88,7 +88,7 @@ def doppler():
 
         reference = Reference(
             project_slug='doppler',
-            version=Version(number=latest_version, os=release.os),
+            version=Version(number=latest_version, os=os),
             algorith='sha256',
             download_url = download_url,
             checksum=checksum
