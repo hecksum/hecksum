@@ -1,4 +1,3 @@
-from functools import wraps
 import re
 from typing import Callable, Generator
 
@@ -6,7 +5,6 @@ from hecksum.classes import Reference, Version
 from hecksum.functions import get_raised
 from hecksum.releases.doppler import doppler_releases
 from hecksum.releases.transmission import transmission_releases
-from settings import IGNORED_EXCEPTIONS
 
 reference_factories = []
 
