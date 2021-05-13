@@ -3,10 +3,9 @@ from typing import Callable, Generator
 
 from hecksum.classes import Reference, Version
 from hecksum.functions import get_raised
-from settings import IGNORED_EXCEPTIONS
-
 from hecksum.releases.doppler import doppler_releases
 from hecksum.releases.transmission import transmission_releases
+from settings import IGNORED_EXCEPTIONS
 
 reference_factories = []
 
@@ -69,6 +68,8 @@ def transmission():
     as the release to download and verify.
     Doppler CLI github: https://github.com/DopplerHQ/cli
 '''
+
+
 @reference_factory
 def doppler():
     for os, architecture in doppler_releases:
@@ -89,9 +90,8 @@ def doppler():
         reference = Reference(
             project_slug='doppler',
             version=Version(number=latest_version, os=os),
-            algorith='sha256',
-            download_url = download_url,
+            algorithm='sha256',
+            download_url=download_url,
             checksum=checksum
         )
         yield reference
-

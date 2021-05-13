@@ -1,9 +1,9 @@
 from enum import Enum
 import hashlib
 import os
-from typing import ClassVar, Optional
+from typing import Optional
 
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 import requests
 
 from settings import IGNORED_EXCEPTIONS
