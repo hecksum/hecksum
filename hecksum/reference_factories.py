@@ -12,18 +12,8 @@ reference_factories = []
 
 
 def reference_factory(func: Callable) -> Callable:
-    @wraps(func)
-    def f():
-        references = []
-        try:
-            for reference in func():
-                references.append(reference)
-        except IGNORED_EXCEPTIONS:
-            pass
-        return references
-
-    reference_factories.append(f)
-    return f
+    reference_factories.append(func)
+    return func
 
 
 @reference_factory
@@ -79,11 +69,11 @@ def doppler():
         latest_release_url = get_raised('https://github.com/DopplerHQ/cli/releases/latest').url
         latest_version = re.search(r'\d+\.\d+\.\d+', latest_release_url)[0]
         checksum_url = f'https://github.com/DopplerHQ/cli/releases/download/{latest_version}/checksums.txt'
-        published_checksum = get_raised(checksum_url).text
+        published_checksums = get_raised(checksum_url).text
 
         # Extract the checksum from the published_checksum we downloaded
-        regex_string = fr'([\w\d]{{64}}) {{2}}(doppler_{latest_version}_{architecture}\.[\w\.]+)'
-        release_chucksum = re.search(regex_string, published_checksum)
+        regex_string = fr'([\w\d]{{64}}) {{2}}(doppler_{latest_version}_{os}_{architecture}\.[\w\.]+)'
+        release_chucksum = re.search(regex_string, published_checksums)
         release_file_name = release_chucksum.group(2)
 
         checksum = release_chucksum.group(1)
