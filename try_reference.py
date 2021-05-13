@@ -1,20 +1,21 @@
 """
-Call with the name of a ReferenceFactory to try it out.
-$ python try_reference.py test_failure
+Call with the name of a reference_factory function to try it out.
+$ python try_reference.py codecov_bash_uploader
 """
-from pprint import pprint
 import sys
 from time import time
 
-from hecksum import reference_factories
+from hecksum.reference_factories import reference_factories
 
 factory_name = sys.argv[1]
 print(factory_name)
-factory: reference_factories.ReferenceFactory = getattr(reference_factories, factory_name)
-ref = factory.make()
-pprint(ref.dict())
+factory, = [f for f in reference_factories if f.__name__ == factory_name]
 start = time()
-download_checksum = ref.get_download_checksum()
+references = factory()
 print(time() - start)
-print(f'{download_checksum = }')
-print(f'Valid: {ref.checksum == download_checksum}')
+for ref in references:
+    print(repr(ref))
+    start = time()
+    check = ref.check()
+    print(repr(check))
+    print(time() - start)

@@ -1,3 +1,4 @@
+from functools import wraps
 import re
 from typing import Callable, Generator
 
@@ -11,6 +12,7 @@ reference_factories = []
 
 
 def reference_factory(func: Callable) -> Callable:
+    @wraps(func)
     def f():
         references = []
         try:
